@@ -3,12 +3,12 @@ import type { ReactNode } from "react";
 import "./globals.css";
 import { Geist } from "next/font/google";
 import { cn } from "@/lib/utils";
-import { SITE_URL } from "@/lib/listings/constants";
+import { SITE_METADATA_BASE } from "@/lib/listings/constants";
 
 const geist = Geist({subsets:['latin'],variable:'--font-sans'});
 
 export const metadata: Metadata = {
-  metadataBase: new URL(SITE_URL),
+  metadataBase: SITE_METADATA_BASE,
   title: {
     default: "Danwell Property Management Agency",
     template: "%s | Danwell Property Management Agency",

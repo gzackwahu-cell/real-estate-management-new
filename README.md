@@ -79,9 +79,12 @@ for production requirements.
 | `NEXT_PUBLIC_SITE_URL` | Server-rendered metadata and public links | Absolute site URL with no trailing slash; used by `metadataBase`, canonical URLs, `/sitemap.xml`, `/robots.txt`, and WhatsApp sharing links. Set it to the staging domain in staging and the production domain in production. |
 
 The two public Supabase values are validated at first use by
-`lib/supabase/env.ts`. The site URL currently falls back to a default in
-`lib/listings/constants.ts`, but deployed environments must set it explicitly so
-generated URLs point to the correct host.
+`lib/supabase/env.ts`. The site URL is resolved by `lib/site-url.ts`: local
+development uses `http://localhost:3000` when it is unset, but deployed builds
+fail fast with an actionable error if `NEXT_PUBLIC_SITE_URL` is missing, empty,
+or not an absolute `http(s)` URL. Set it for every Vercel environment before
+building so metadata, canonical URLs, sitemap, robots, and sharing links point
+to the correct host.
 
 ### Required in production and hosted staging
 

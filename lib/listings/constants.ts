@@ -1,8 +1,13 @@
+import { resolveSiteUrl } from "@/lib/site-url";
 import { formatMoney } from "@/lib/tenancy/constants";
 
-export const SITE_URL = (
-  process.env.NEXT_PUBLIC_SITE_URL ?? "https://danwell.co.ke"
-).replace(/\/$/, "");
+const isDeployedSite = Boolean(process.env.VERCEL || process.env.VERCEL_ENV);
+
+export const SITE_URL = resolveSiteUrl(process.env.NEXT_PUBLIC_SITE_URL, {
+  isDeployed: isDeployedSite,
+});
+
+export const SITE_METADATA_BASE = new URL(SITE_URL);
 
 export const PUBLIC_STORAGE_BUCKET = "public-marketing";
 

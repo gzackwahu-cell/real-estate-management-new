@@ -178,7 +178,7 @@ Required policies and verification are listed in the launch checklist below.
 
 ### Environment status
 
-- An earlier presence-only audit found `.env.local` with the two public Supabase variables populated and `NEXT_PUBLIC_SITE_URL` absent, which triggers the fallback in `lib/listings/constants.ts`. No environment values were displayed, and this documentation task did not inspect or modify `.env.local`.
+- An earlier presence-only audit found `.env.local` with the two public Supabase variables populated and `NEXT_PUBLIC_SITE_URL` absent. Local resolution now falls back to `http://localhost:3000`; deployed builds fail fast with an actionable error if the variable is missing or empty. No environment values were displayed, and no documentation task inspected or modified `.env.local`.
 - Actual application input variables are `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, `NEXT_PUBLIC_SITE_URL`, `UPSTASH_REDIS_REST_URL`, and `UPSTASH_REDIS_REST_TOKEN`. `NODE_ENV` and `VERCEL_ENV` are read by the rate limiter but are platform-managed.
 - No application file reads `SUPABASE_SERVICE_ROLE_KEY`. No application file reads `NEXT_PUBLIC_STORAGE_BUCKET`; bucket names are hardcoded in `lib/portfolio/constants.ts` and `lib/listings/constants.ts`. Both obsolete entries were removed from `.env.example` and `README.md` after that code scan.
 
@@ -401,7 +401,7 @@ Run the smoke tests below in staging immediately after migrations. Expected resu
 - [ ] Set the environment variable names from section D in the hosting platform with real environment-specific values; do not commit `.env.local`.
 - [ ] Use a supported Node runtime for Next 16 (Node 20.9+); no `engines`/`.nvmrc` is currently pinned.
 - [ ] Build command: `npm run build`; start command: `npm run start`.
-- [ ] Configure the production domain as `NEXT_PUBLIC_SITE_URL` for canonical URLs, metadata, sitemap, and robots.
+- [ ] Configure the production domain as `NEXT_PUBLIC_SITE_URL` for canonical URLs, metadata, sitemap, and robots. Empty or invalid values fail the deployed build with an actionable error; do not leave a blank variable in Vercel.
 - [ ] Deploy only after all migrations (including `0024`), storage buckets, policies, SQL regression assertions, and smoke tests pass in staging.
 - [ ] Verify `/sitemap.xml` includes only the eight static pages plus published active listing URLs, uses request-time data (no build-time Supabase access), and excludes private/protected routes.
 - [ ] Set `UPSTASH_REDIS_REST_URL` and `UPSTASH_REDIS_REST_TOKEN`; confirm enquiry/viewing limits are shared across instances and that production denies submissions if either variable is missing or Redis is unavailable.
