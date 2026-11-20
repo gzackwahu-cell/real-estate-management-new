@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 240 64" role="img" aria-labelledby="title desc">
+  <title id="title">Danwell Property Management Agency</title>
+  <desc id="desc">Danwell wordmark in navy, teal and gold</desc>
+  <rect width="240" height="64" rx="12" fill="#0b1f33"/>
+  <path d="M24 48V16h12l12 18 12-18h12v32h-10V31L48 47 34 31v17H24Z" fill="#d4af37"/>
+  <path d="M74 48V16h11l13 20V16h10v32h-11l-13-20v20H74Z" fill="#0f766e"/>
+  <text x="124" y="30" fill="#ffffff" font-family="Arial, Helvetica, sans-serif" font-size="17" font-weight="700" letter-spacing="1.5">DANWELL</text>
+  <text x="125" y="46" fill="#d4af37" font-family="Arial, Helvetica, sans-serif" font-size="8.5" letter-spacing="1.1">PROPERTY MANAGEMENT</text>
+</svg>

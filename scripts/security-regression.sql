@@ -1,0 +1,158 @@
+-- Danwell Stage 1 security regression checks.
+-- LOCAL TEST PLAN ONLY. DO NOT EXECUTE against production Supabase.
+-- Run only against a disposable local/staging database after migrations are approved.
+-- Replace <A>, <B>, <TENANT_USER>, etc. with real test ids in that environment.
+-- Active-count checks below must be run as the migration owner/postgres: direct
+-- EXECUTE on public.active_super_admin_count() is revoked from application roles.
+
+-- ─────────────────────────────────────────────────────────────────────────────
+-- 1. Advisory-lock concurrency: two active Super Admins, two simultaneous
+--    deactivations. In two separate SQL sessions:
+--
+-- SESSION A:
+--   begin;
+--   select public.active_super_admin_count();                    -- expect 2
+--   update public.profiles set is_active = false where id = <A>; -- holds lock
+--
+-- SESSION B (while A is still open):
+--   begin;
+--   update public.profiles set is_active = false where id = <B>; -- must WAIT
+--
+-- Then in SESSION A:
+--   commit;
+--
+-- SESSION B must now fail with:
+--   Cannot remove or disable the last active Super Admin.
+-- Roll back SESSION B and verify:
+--   select public.active_super_admin_count();                    -- expect 1
+--
+-- Repeat with profile_roles.is_active = false and with profile_roles DELETE.
+-- ─────────────────────────────────────────────────────────────────────────────
+
+-- ─────────────────────────────────────────────────────────────────────────────
+-- 1b. Grouped and concurrent Super Admin removal.
+--
+-- Grouped single-statement test:
+--   Setup: exactly two active Super Admins <A> and <B>.
+--   begin;
+--   update public.profiles set is_active = false where id in (<A>, <B>);
+--   select public.active_super_admin_count(); -- must be 1 or 2; never 0
+--   rollback;
+--
+--   Repeat each of these from the same two-admin setup:
+--     update public.profile_roles set is_active = false
+--     where profile_id in (<A>, <B>) and role_id = <SUPER_ADMIN_ROLE_ID>;
+--     delete from public.profile_roles
+--     where profile_id in (<A>, <B>) and role_id = <SUPER_ADMIN_ROLE_ID>;
+--     delete from public.profiles where id in (<A>, <B>);
+--   Every variant must either fail the whole statement or leave at least one
+--   active Super Admin. If both rows change and the count reaches 0, the
+--   row-trigger design must be strengthened with a statement-level guard.
+--
+-- Concurrent grouped test:
+--   Setup: four active Super Admins <A>, <B>, <C>, <D>.
+--   SESSION A:
+--     begin;
+--     update public.profiles set is_active = false where id in (<A>, <B>);
+--     -- holds the advisory lock
+--   SESSION B (while A is open):
+--     begin;
+--     update public.profiles set is_active = false where id in (<C>, <D>);
+--     -- must WAIT on the same lock
+--   SESSION A:
+--     commit; -- leaves C and D active from A's statement
+--   SESSION B must now fail or still leave at least one active Super Admin.
+--   Final check in a new session:
+--     select public.active_super_admin_count(); -- expect >= 1, never 0
+--   Repeat the concurrent test with profile_roles DELETE for all four admins.
+-- ─────────────────────────────────────────────────────────────────────────────
+
+-- ─────────────────────────────────────────────────────────────────────────────
+-- 2. Bootstrap guard permissions.
+--
+-- As an ordinary authenticated user (not postgres/service_role):
+--   select * from public.super_admin_bootstrap_guard;             -- expect denied
+--   update public.super_admin_bootstrap_guard set allowed = true; -- expect denied
+--   select set_config('danwell.bootstrap_super_admin', 'on', true); -- irrelevant now
+--   insert into public.profile_roles (...) values (...);          -- expect denied
+--
+-- As the migration owner:
+--   select relforcerowsecurity
+--   from pg_class
+--   where oid = 'public.super_admin_bootstrap_guard'::regclass;   -- expect false
+-- ─────────────────────────────────────────────────────────────────────────────
+
+-- ─────────────────────────────────────────────────────────────────────────────
+-- 3. Inactive profile checks.
+--
+-- With a Super Admin session:
+--   select public.is_super_admin();                              -- expect true
+--   select public.has_permission('properties', 'view');          -- expect true
+--   select public.set_profile_active(<ADMIN_ID>, false);
+--     -- expected: blocked by last-Super-Admin trigger if it is the only one
+--
+-- With a non-Super staff user <STAFF_ID>:
+--   select public.is_super_admin();                              -- expect false
+--   select public.has_permission('properties', 'view');          -- expect true
+--   select public.set_profile_active(<STAFF_ID>, false);         -- expect denied
+--   select public.set_profile_active(<OTHER_ID>, false);         -- expect denied
+--   select public.is_profile_active();                           -- expect true
+--   select public.get_my_active_role_names();                    -- expect staff roles
+--   update public.profiles set is_active = false where id = <STAFF_ID>;
+--     -- expected: permission denied for column is_active
+--
+-- After deactivating <STAFF_ID> as a Super Admin, re-authenticate as that user:
+--   select public.is_profile_active();                           -- expect false
+--   select public.is_super_admin();                              -- expect false
+--   select public.has_permission('properties', 'view');          -- expect false
+--   select * from public.get_my_active_role_names();             -- expect 0 rows
+-- ─────────────────────────────────────────────────────────────────────────────
+
+-- ─────────────────────────────────────────────────────────────────────────────
+-- 4. Bootstrap email verification and guard reset.
+--
+-- Create Auth users <UNVERIFIED_USER> and <VERIFIED_USER> in a staging project.
+-- With zero active Super Admins:
+--   select public.bootstrap_first_super_admin('<unverified@example.com>');
+--     -- expected: The Supabase Auth email must be verified before bootstrap.
+--   select allowed from public.super_admin_bootstrap_guard where singleton;
+--     -- expected: false
+--
+--   select public.bootstrap_first_super_admin('<verified@example.com>');
+--     -- expected: one profile id returned
+--   select allowed from public.super_admin_bootstrap_guard where singleton;
+--     -- expected: false
+--   select public.active_super_admin_count();                    -- expect 1
+--
+--   select public.bootstrap_first_super_admin('<verified@example.com>');
+--     -- expected: An active Super Admin already exists. Bootstrap is one-time only.
+--
+-- Force a mid-function failure only in staging (for example, temporarily rename
+-- the super_admin role), then confirm the guard row is still false.
+-- ─────────────────────────────────────────────────────────────────────────────
+
+-- ─────────────────────────────────────────────────────────────────────────────
+-- 5. Removal migration safety (apply 0011 only in staging for this test).
+--
+-- Before:
+--   select public.active_super_admin_count();                    -- expect 1
+--   select allowed from public.super_admin_bootstrap_guard where singleton;
+--                                                                -- expect false
+--
+-- After applying 0011:
+--   select count(*) from pg_proc
+--     where pronamespace = 'public'::regnamespace
+--       and proname = 'bootstrap_first_super_admin';             -- expect 0
+--   select to_regclass('public.super_admin_bootstrap_guard');    -- expect null
+--
+-- With the existing Super Admin:
+--   insert into public.profile_roles (profile_id, role_id, assigned_by, is_active)
+--   values (<SECOND_ADMIN>, <SUPER_ADMIN_ROLE_ID>, <FIRST_ADMIN>, true);
+--     -- expected: success
+--   delete from public.profile_roles
+--   where profile_id = <FIRST_ADMIN> and role_id = <SUPER_ADMIN_ROLE_ID>;
+--     -- expected: success now that another Super Admin exists
+--   delete from public.profile_roles
+--   where profile_id = <SECOND_ADMIN> and role_id = <SUPER_ADMIN_ROLE_ID>;
+--     -- expected: Cannot remove the last active Super Admin role assignment.
+-- ─────────────────────────────────────────────────────────────────────────────
