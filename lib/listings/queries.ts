@@ -27,7 +27,7 @@ const publicListingsSchema = z.array(publicListingRowSchema);
 const listingOptionSchema = z.object({
   slug: z.string(),
   title: z.string(),
-  listing_type: z.enum(["rent", "sale"]),
+  listing_type: z.enum(["rent", "sale", "lease"]),
   town: z.string(),
   county: z.string(),
 });
@@ -80,6 +80,14 @@ export async function getPublishedListings(
 
     if (filters.county) {
       query = query.ilike("county", `%${sanitizeLike(filters.county)}%`);
+    }
+    if (filters.area) {
+      const safeArea = sanitizeLike(filters.area);
+      if (safeArea) {
+        query = query.or(
+          `town.ilike.%${safeArea}%,estate.ilike.%${safeArea}%`,
+        );
+      }
     }
     if (filters.location) {
       const safe = sanitizeLike(filters.location);

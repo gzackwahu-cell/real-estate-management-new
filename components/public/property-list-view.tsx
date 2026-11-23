@@ -6,6 +6,7 @@ import {
   type ListingType,
 } from "@/lib/listings/constants";
 import { getPublishedListings } from "@/lib/listings/queries";
+import { getPublicLocationOptions } from "@/lib/locations/queries";
 import {
   parseListingFilters,
   type PublicSearchParams,
@@ -27,6 +28,12 @@ const copy: Record<
     description:
       "Browse approved properties for sale, from homes and apartments to land and commercial spaces.",
   },
+  lease: {
+    eyebrow: "Properties for lease",
+    title: "Secure the right space for the long term",
+    description:
+      "Explore approved lease opportunities for homes, offices, and commercial spaces across Kenya.",
+  },
 };
 
 export async function PropertyListView({
@@ -38,14 +45,10 @@ export async function PropertyListView({
 }) {
   const params = await searchParams;
   const filters = parseListingFilters(category, params);
-  const [listings, allListings] = await Promise.all([
+  const [listings, locationOptions] = await Promise.all([
     getPublishedListings(filters),
-    getPublishedListings(parseListingFilters(category, {})),
+    getPublicLocationOptions(),
   ]);
-
-  const counties = Array.from(
-    new Set(allListings.map((listing) => listing.county)),
-  ).sort();
 
   const text = copy[category];
 
@@ -64,7 +67,11 @@ export async function PropertyListView({
       </section>
 
       <section className="mx-auto w-full max-w-7xl px-4 py-10">
-        <PropertyFilters category={category} filters={filters} counties={counties} />
+        <PropertyFilters
+          category={category}
+          filters={filters}
+          locationOptions={locationOptions}
+        />
 
         <div className="mt-8 flex flex-wrap items-baseline justify-between gap-3">
           <h2 className="text-xl font-semibold text-danwell-navy">

@@ -1,4 +1,5 @@
 import { Mail, MessageCircle } from "lucide-react";
+import { DanwellLogo } from "@/components/brand/danwell-logo";
 import { AGENCY } from "@/lib/constants/agency";
 
 export function BrandPanel() {
@@ -14,17 +15,12 @@ export function BrandPanel() {
       />
 
       <div className="relative">
-        <div className="flex items-center gap-3">
-          <span className="flex size-11 items-center justify-center rounded-xl border border-danwell-gold/50 bg-danwell-gold/10 text-lg font-semibold text-danwell-gold">
-            D
-          </span>
-          <div>
-            <p className="text-lg leading-tight font-semibold tracking-tight">
-              {AGENCY.shortName}
-            </p>
-            <p className="text-xs text-white/65">Property Management Agency</p>
-          </div>
-        </div>
+        <DanwellLogo
+          width={52}
+          height={35}
+          priority
+          wordmarkClassName="text-white"
+        />
 
         <div className="mt-14 max-w-md">
           <p className="text-xs font-medium tracking-[0.2em] text-danwell-gold uppercase">

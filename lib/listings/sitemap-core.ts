@@ -17,9 +17,18 @@ export const STATIC_SITEMAP_ROUTES = [
   "/properties",
   "/properties/rent",
   "/properties/sale",
+  "/properties/lease",
   "/contact",
   "/enquire",
   "/viewings/request",
+  "/faq",
+  "/privacy",
+  "/terms",
+  "/refund",
+  "/tenant-information",
+  "/owner-information",
+  "/land-guidance",
+  "/commercial-guidance",
 ] as const;
 
 const LISTING_SLUG_PATTERN = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;

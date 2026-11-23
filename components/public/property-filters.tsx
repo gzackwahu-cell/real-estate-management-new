@@ -1,3 +1,6 @@
+"use client";
+
+import { useMemo, useState } from "react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -9,42 +12,82 @@ import {
 } from "@/lib/listings/constants";
 import type { ListingFilters } from "@/lib/listings/validation";
 
+type LocationOption = {
+  id: string;
+  name: string;
+  areas: { id: string; name: string; isActive: boolean }[];
+};
+
 export function PropertyFilters({
   category,
   filters,
-  counties,
+  locationOptions,
 }: {
   category: ListingType;
   filters: ListingFilters;
-  counties: string[];
+  locationOptions: LocationOption[];
 }) {
+  const [county, setCounty] = useState(filters.county ?? "");
+
+  const areas = useMemo(() => {
+    if (!county) return [];
+    const match = locationOptions.find((option) => option.name === county);
+    return (match?.areas ?? []).filter((area) => area.isActive);
+  }, [county, locationOptions]);
+
   return (
     <form
       action={`/properties/${category}`}
       method="get"
       className="grid gap-4 rounded-2xl border border-danwell-navy/10 bg-white p-5 shadow-sm sm:grid-cols-2 lg:grid-cols-6"
     >
+      <div>
+        <Label htmlFor="county">County</Label>
+        <Select
+          id="county"
+          name="county"
+          value={county}
+          onChange={(event) => setCounty(event.target.value)}
+          className="mt-1.5"
+        >
+          <option value="">All counties</option>
+          {locationOptions.map((option) => (
+            <option key={option.id} value={option.name}>
+              {option.name}
+            </option>
+          ))}
+        </Select>
+      </div>
+
+      <div>
+        <Label htmlFor="area">Area / town</Label>
+        <Select
+          id="area"
+          name="area"
+          defaultValue={filters.area ?? ""}
+          disabled={!county}
+          className="mt-1.5"
+        >
+          <option value="">
+            {county ? "All areas in county" : "Select county first"}
+          </option>
+          {areas.map((area) => (
+            <option key={area.id} value={area.name}>
+              {area.name}
+            </option>
+          ))}
+        </Select>
+      </div>
+
       <div className="sm:col-span-2 lg:col-span-2">
-        <Label htmlFor="location">Location or estate</Label>
+        <Label htmlFor="location">Keyword or estate</Label>
         <Input
           id="location"
           name="location"
           defaultValue={filters.location ?? ""}
-          placeholder="Town, estate or keyword"
+          placeholder="Estate, title or keyword"
           className="mt-1.5"
         />
-      </div>
-
-      <div>
-        <Label htmlFor="county">County</Label>
-        <Select id="county" name="county" defaultValue={filters.county ?? ""} className="mt-1.5">
-          <option value="">All counties</option>
-          {counties.map((county) => (
-            <option key={county} value={county}>
-              {county}
-            </option>
-          ))}
-        </Select>
       </div>
 
       <div>
@@ -107,7 +150,7 @@ export function PropertyFilters({
         />
       </div>
 
-      <div className="flex items-end gap-2 sm:col-span-2 lg:col-span-6">
+      <div className="flex items-end gap-2 sm:col-span-2 lg:col-span-4">
         <Button type="submit" className="bg-danwell-teal text-white hover:bg-danwell-navy">
           Search properties
         </Button>

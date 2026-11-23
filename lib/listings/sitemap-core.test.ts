@@ -21,11 +21,31 @@ test("includes all static public pages and no private routes by default", () => 
   });
 
   const urls = entries.map((entry) => entry.url);
+  const paths = entries.map((entry) => new URL(entry.url).pathname);
   assert.ok(urls.includes(`${SITE_URL}/enquire`));
   assert.ok(urls.includes(`${SITE_URL}/viewings/request`));
-  assert.ok(!urls.some((url) => url.includes("/dashboard")));
-  assert.ok(!urls.some((url) => url.includes("/owner")));
-  assert.ok(!urls.some((url) => url.includes("/tenant")));
+
+  for (const route of [
+    "/faq",
+    "/privacy",
+    "/terms",
+    "/refund",
+    "/tenant-information",
+    "/owner-information",
+    "/land-guidance",
+    "/commercial-guidance",
+  ]) {
+    assert.ok(urls.includes(`${SITE_URL}${route}`));
+  }
+
+  // The public information pages are not the same as the private portals.
+  for (const prefix of ["/dashboard", "/owner", "/tenant"]) {
+    assert.ok(
+      !paths.some((path) => path === prefix || path.startsWith(`${prefix}/`)),
+    );
+  }
+  assert.ok(paths.includes("/owner-information"));
+  assert.ok(paths.includes("/tenant-information"));
 });
 
 test("adds eligible listing URLs with normalized last-modified dates", () => {

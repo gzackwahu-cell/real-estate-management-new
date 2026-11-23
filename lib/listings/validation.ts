@@ -37,7 +37,7 @@ const nullableDbNumber = z.preprocess(
 export const publicListingRowSchema = z.object({
   id: z.uuid(),
   slug: z.string(),
-  listing_type: z.enum(["rent", "sale"]),
+  listing_type: z.enum(["rent", "sale", "lease"]),
   property_category: z.string(),
   status: z.string(),
   is_published: z.boolean(),
@@ -91,8 +91,9 @@ const optionalNumber = z.preprocess((value) => {
 }, z.number().nullable());
 
 export const listingFiltersSchema = z.object({
-  category: z.preprocess(singleValue, z.enum(["rent", "sale"])),
+  category: z.preprocess(singleValue, z.enum(["rent", "sale", "lease"])),
   county: optionalText,
+  area: optionalText,
   location: optionalText,
   propertyType: optionalText,
   minPrice: optionalNumber,
@@ -113,6 +114,7 @@ export function parseListingFilters(
     return {
       category,
       county: null,
+      area: null,
       location: null,
       propertyType: null,
       minPrice: null,
@@ -261,7 +263,7 @@ const optionalUuid = z.preprocess(
 const listingInputBaseSchema = z.object({
   title: z.string().trim().min(3, "Enter a listing title.").max(160, "Title is too long."),
   slug: z.string().trim().max(120, "Slug is too long."),
-  listingType: z.enum(["rent", "sale"]),
+  listingType: z.enum(["rent", "sale", "lease"]),
   propertyCategory: z.enum([
     "house",
     "apartment",

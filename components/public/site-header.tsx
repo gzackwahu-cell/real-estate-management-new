@@ -1,6 +1,6 @@
 import { Suspense } from "react";
-import Image from "next/image";
 import Link from "next/link";
+import { DanwellLogo } from "@/components/brand/danwell-logo";
 import { AGENCY } from "@/lib/constants/agency";
 import { SiteNavigation } from "./site-navigation";
 
@@ -8,14 +8,12 @@ export function SiteHeader() {
   return (
     <header className="sticky top-0 z-40 border-b border-white/10 bg-danwell-navy/95 backdrop-blur">
       <div className="mx-auto flex w-full max-w-7xl items-center justify-between gap-3 px-4 py-3">
-        <Link href="/" aria-label={`${AGENCY.shortName} home`} className="shrink-0">
-          <Image
-            src="/danwell-logo.svg"
-            alt={`${AGENCY.name} logo`}
-            width={180}
-            height={48}
-            priority
-          />
+        <Link
+          href="/"
+          aria-label={`${AGENCY.shortName} home`}
+          className="shrink-0 text-white"
+        >
+          <DanwellLogo width={44} height={30} priority wordmarkClassName="text-white" />
         </Link>
 
         <div className="hidden lg:block">

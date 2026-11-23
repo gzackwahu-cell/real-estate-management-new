@@ -1,4 +1,6 @@
 import type { ReactNode } from "react";
+
+export const instant = false;
 import { PortalShell } from "@/components/layout/portal-shell";
 import type { PortalNavItem } from "@/components/portal/portal-navigation";
 import { ROLES } from "@/lib/auth/roles";

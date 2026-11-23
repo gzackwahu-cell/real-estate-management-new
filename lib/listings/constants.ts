@@ -14,6 +14,7 @@ export const PUBLIC_STORAGE_BUCKET = "public-marketing";
 export const LISTING_TYPES = [
   { value: "rent", label: "For rent" },
   { value: "sale", label: "For sale" },
+  { value: "lease", label: "For lease" },
 ] as const;
 
 export const PROPERTY_CATEGORIES = [

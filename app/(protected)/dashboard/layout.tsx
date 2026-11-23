@@ -1,102 +1,179 @@
 import { Suspense, type ReactNode } from "react";
-import Link from "next/link";
+
+export const instant = false;
+import {
+  AdminChrome,
+  type AdminNavGroup,
+  type AdminQuickAction,
+} from "@/components/admin/admin-chrome";
+import { AdminChromeSkeleton } from "@/components/admin/admin-chrome-skeleton";
 import { DashboardAccess } from "@/components/auth/protected-guard";
 import { LogoutButton } from "@/components/auth/logout-button";
-import {
-  PortalNavigation,
-  type PortalNavItem,
-} from "@/components/portal/portal-navigation";
-import { getCurrentAuthContext } from "@/lib/auth/dal";
-import { hasAnyRole, ROLES } from "@/lib/auth/roles";
-import { AGENCY } from "@/lib/constants/agency";
+import { hasPermission, requireUser } from "@/lib/auth/dal";
+import type { ModuleName } from "@/lib/auth/roles";
+// eslint-disable-next-line no-restricted-imports -- layout already enforces requireUser; client is used only for unread notification count.
+import { getAuthorizedServerClient } from "@/lib/supabase/server";
 
-const staffNavigation: readonly PortalNavItem[] = [
-  { href: "/dashboard", label: "Overview" },
-  { href: "/dashboard/properties", label: "Properties" },
-  { href: "/dashboard/owners", label: "Owners" },
-  { href: "/dashboard/tenants", label: "Tenants" },
-  { href: "/dashboard/applications", label: "Applications" },
-  { href: "/dashboard/leases", label: "Leases" },
-  { href: "/dashboard/finance", label: "Finance" },
-  { href: "/dashboard/maintenance", label: "Maintenance" },
-  { href: "/dashboard/listings", label: "Listings" },
-  { href: "/dashboard/enquiries", label: "Enquiries" },
-  { href: "/dashboard/viewings", label: "Viewings" },
-];
+async function has(module: ModuleName, action: "view" | "create" = "view") {
+  return hasPermission(module, action);
+}
 
-async function DashboardPortalLinks() {
-  const context = await getCurrentAuthContext();
-  if (!context) {
-    return null;
-  }
+async function AdminShell({ children }: { children: ReactNode }) {
+  const context = await requireUser();
 
-  const links = [
-    ...(hasAnyRole(context.roles, [ROLES.TENANT])
-      ? [{ href: "/tenant", label: "Tenant portal" }]
+  const [
+    canProperties,
+    canCreateProperty,
+    canOwners,
+    canTenants,
+    canCreateTenant,
+    canLeases,
+    canFinance,
+    canMaintenance,
+    canListings,
+    canCreateListing,
+    canInquiries,
+    canViewings,
+    canReports,
+    canUsersRoles,
+    canNotifications,
+  ] = await Promise.all([
+    has("properties"),
+    has("properties", "create"),
+    has("owners"),
+    has("tenants"),
+    has("tenants", "create"),
+    has("leases"),
+    has("rent"),
+    has("maintenance"),
+    has("listings"),
+    has("listings", "create"),
+    has("inquiries"),
+    has("viewings"),
+    has("reports"),
+    has("users_roles"),
+    has("notifications"),
+  ]);
+
+  const notificationCount = await (async () => {
+    try {
+      const supabase = await getAuthorizedServerClient(context);
+      const { count, error } = await supabase
+        .from("notifications")
+        .select("id", { count: "exact", head: true })
+        .eq("recipient_profile_id", context.userId)
+        .eq("status", "unread");
+      return error ? 0 : (count ?? 0);
+    } catch {
+      return 0;
+    }
+  })();
+
+  const groups: AdminNavGroup[] = [
+    {
+      label: "Overview",
+      items: [
+        { href: "/dashboard", label: "Dashboard", icon: "dashboard" as const },
+        ...(canReports
+          ? [{ href: "/dashboard/reports", label: "Reports", icon: "reports" as const }]
+          : []),
+      ],
+    },
+    {
+      label: "Portfolio",
+      items: [
+        ...(canProperties
+          ? [{ href: "/dashboard/properties", label: "Properties", icon: "properties" as const }]
+          : []),
+        ...(canOwners
+          ? [{ href: "/dashboard/owners", label: "Owners", icon: "owners" as const }]
+          : []),
+        ...(canTenants
+          ? [{ href: "/dashboard/tenants", label: "Tenants", icon: "tenants" as const }]
+          : []),
+        ...(canTenants || canProperties
+          ? [{ href: "/dashboard/applications", label: "Applications", icon: "applications" as const }]
+          : []),
+        ...(canLeases
+          ? [{ href: "/dashboard/leases", label: "Leases", icon: "leases" as const }]
+          : []),
+      ],
+    },
+    {
+      label: "Operations",
+      items: [
+        ...(canFinance
+          ? [{ href: "/dashboard/finance", label: "Finance", icon: "finance" as const }]
+          : []),
+        ...(canMaintenance
+          ? [{ href: "/dashboard/maintenance", label: "Maintenance", icon: "maintenance" as const }]
+          : []),
+        ...(canListings
+          ? [{ href: "/dashboard/listings", label: "Listings", icon: "listings" as const }]
+          : []),
+        ...(canInquiries
+          ? [{ href: "/dashboard/enquiries", label: "Enquiries", icon: "enquiries" as const }]
+          : []),
+        ...(canViewings
+          ? [{ href: "/dashboard/viewings", label: "Viewings", icon: "viewings" as const }]
+          : []),
+      ],
+    },
+    {
+      label: "Administration",
+      items: [
+        ...(canNotifications
+          ? [
+              {
+                href: "/dashboard/notifications",
+                label: "Notifications",
+                icon: "notifications" as const,
+                badge: notificationCount,
+              },
+            ]
+          : []),
+        ...(canUsersRoles
+          ? [{ href: "/dashboard/staff", label: "Staff & access", icon: "staff" as const }]
+          : []),
+        ...(canUsersRoles
+          ? [{ href: "/dashboard/locations", label: "Locations", icon: "land" as const }]
+          : []),
+      ],
+    },
+  ].filter((group) => group.items.length > 0);
+
+  const quickActions: AdminQuickAction[] = [
+    ...(canCreateProperty
+      ? [{ href: "/dashboard/properties/new", label: "New property", icon: "properties" as const }]
       : []),
-    ...(hasAnyRole(context.roles, [ROLES.OWNER])
-      ? [{ href: "/owner", label: "Owner portal" }]
+    ...(canCreateTenant
+      ? [{ href: "/dashboard/tenants/new", label: "New tenant", icon: "tenants" as const }]
+      : []),
+    ...(canCreateListing
+      ? [{ href: "/dashboard/listings/new", label: "New listing", icon: "listings" as const }]
       : []),
   ];
 
-  if (links.length === 0) {
-    return null;
-  }
-
   return (
-    <div className="flex gap-1 border-l pl-2">
-      {links.map((link) => (
-        <Link
-          key={link.href}
-          href={link.href}
-          className="rounded-lg px-3 py-1.5 text-sm font-medium text-danwell-gold transition-colors hover:bg-danwell-gold/10"
-        >
-          {link.label}
-        </Link>
-      ))}
-    </div>
+    <AdminChrome
+      groups={groups}
+      email={context.email}
+      roles={context.roles}
+      notificationCount={notificationCount}
+      quickActions={quickActions}
+      logoutSlot={<LogoutButton />}
+    >
+      {children}
+    </AdminChrome>
   );
 }
 
-export default function DashboardLayout({
-  children,
-}: {
-  children: ReactNode;
-}) {
+export default function DashboardLayout({ children }: { children: ReactNode }) {
   return (
-    <div className="min-h-screen bg-muted/30">
-      <header className="border-b border-danwell-navy/10 bg-white">
-        <div className="mx-auto flex w-full max-w-6xl flex-wrap items-center justify-between gap-4 px-4 py-3">
-          <div className="flex items-center gap-3">
-            <span className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-danwell-navy font-semibold text-danwell-gold">
-              D
-            </span>
-            <div>
-              <p className="text-sm leading-tight font-semibold text-danwell-navy">
-                {AGENCY.shortName}
-              </p>
-              <p className="text-[11px] text-muted-foreground">Management</p>
-            </div>
-          </div>
-
-          <div className="order-3 flex w-full flex-wrap items-center gap-1 md:order-none md:w-auto md:flex-1 md:pl-4">
-            <Suspense fallback={<div className="h-8" aria-hidden="true" />}>
-              <PortalNavigation items={staffNavigation} />
-            </Suspense>
-            <Suspense fallback={null}>
-              <DashboardPortalLinks />
-            </Suspense>
-          </div>
-
-          <LogoutButton />
-        </div>
-      </header>
-
-      <main className="mx-auto w-full max-w-6xl px-4 py-8">
-        <Suspense fallback={<p className="text-sm text-muted-foreground">Checking access...</p>}>
-          <DashboardAccess>{children}</DashboardAccess>
-        </Suspense>
-      </main>
-    </div>
+    <DashboardAccess>
+      <Suspense fallback={<AdminChromeSkeleton />}>
+        <AdminShell>{children}</AdminShell>
+      </Suspense>
+    </DashboardAccess>
   );
 }

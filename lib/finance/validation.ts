@@ -171,6 +171,11 @@ const embeddedReceiptSchema = z.object({
   receipt_number: z.string(),
 });
 
+export function firstEmbedded<T>(value: T | T[] | null | undefined): T | null {
+  if (Array.isArray(value)) return value[0] ?? null;
+  return value ?? null;
+}
+
 const embeddedArrayOrObject = <T extends z.ZodTypeAny>(schema: T) =>
   z.union([schema, z.array(schema)]).nullish();
 
