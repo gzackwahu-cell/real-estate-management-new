@@ -2,13 +2,14 @@
 
 import { useMemo, useState, type ReactNode } from "react";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useSearchParams } from "next/navigation";
 import {
   ArrowUpRight,
   Bell,
   Building,
   CalendarCheck,
   ChartNoAxesCombined,
+  ChevronDown,
   ClipboardList,
   ExternalLink,
   FileText,
@@ -22,6 +23,7 @@ import {
   PanelLeftOpen,
   Plus,
   Search,
+  Settings,
   ShieldCheck,
   UsersRound,
   Wallet,
@@ -49,6 +51,7 @@ const iconMap = {
   staff: ShieldCheck,
   documents: FileText,
   land: Landmark,
+  settings: Settings,
 } as const;
 
 export type AdminNavIcon = keyof typeof iconMap;
@@ -103,15 +106,21 @@ function initials(email: string | null): string {
 function Sidebar({
   groups,
   activeHref,
+  pathname,
   collapsed,
   mobile,
+  openGroups,
+  onToggleGroup,
   onCollapse,
   onClose,
 }: {
   groups: readonly AdminNavGroup[];
   activeHref: string;
+  pathname: string;
   collapsed: boolean;
   mobile: boolean;
+  openGroups: ReadonlySet<string>;
+  onToggleGroup: (label: string) => void;
   onCollapse: () => void;
   onClose?: () => void;
 }) {
@@ -156,58 +165,78 @@ function Sidebar({
       </div>
 
       <nav className="flex-1 overflow-y-auto px-2 py-3">
-        {groups.map((group) => (
-          <div key={group.label} className="mb-4">
-            {!collapsed || mobile ? (
-              <p className="px-2 pb-1.5 text-[10px] font-semibold tracking-[0.14em] text-white/40 uppercase">
-                {group.label}
-              </p>
-            ) : (
-              <div className="mx-2 mb-2 border-t border-white/10" />
-            )}
-            <div className="space-y-0.5">
-              {group.items.map((item) => {
-                const Icon = iconMap[item.icon] ?? LayoutDashboard;
-                const active =
-                  item.href === activeHref ||
-                  (item.href !== "/dashboard" &&
-                    activeHref.startsWith(`${item.href}/`));
+        {groups.map((group) => {
+          const isOpen = openGroups.has(group.label);
+          const hasActive = group.items.some((item) => {
+            const itemBase = item.href.split("?")[0];
+            return item.href === activeHref || (itemBase !== "/dashboard" && pathname.startsWith(`${itemBase}/`) && !item.href.includes("?"));
+          });
+          const showItems = collapsed && !mobile ? true : isOpen || hasActive;
 
-                return (
-                  <Link
-                    key={item.href}
-                    href={item.href}
-                    title={collapsed && !mobile ? item.label : undefined}
-                    aria-current={active ? "page" : undefined}
-                    className={cn(
-                      "group flex items-center rounded-lg text-sm transition-colors",
-                      collapsed && !mobile ? "justify-center px-2 py-2" : "gap-2.5 px-2 py-1.5",
-                      active
-                        ? "bg-white/12 text-white"
-                        : "text-white/65 hover:bg-white/8 hover:text-white",
-                    )}
-                  >
-                    <Icon aria-hidden="true" className="size-4 shrink-0" />
-                    {!collapsed || mobile ? (
-                      <>
-                        <span className="min-w-0 flex-1 truncate">
-                          {item.label}
-                        </span>
-                        {item.badge && item.badge > 0 ? (
-                          <span className="rounded-full bg-danwell-gold px-1.5 text-[10px] font-semibold text-danwell-navy tabular-nums">
-                            {item.badge > 99 ? "99+" : item.badge}
-                          </span>
+          return (
+            <div key={group.label} className="mb-2">
+              {!collapsed || mobile ? (
+                <button
+                  type="button"
+                  onClick={() => onToggleGroup(group.label)}
+                  aria-expanded={showItems}
+                  className="flex w-full items-center gap-1 rounded-md px-2 py-1.5 text-[10px] font-semibold tracking-[0.14em] text-white/45 uppercase hover:bg-white/5 hover:text-white/70"
+                >
+                  <span className="flex-1 text-left">{group.label}</span>
+                  <ChevronDown
+                    aria-hidden="true"
+                    className={cn("size-3 transition-transform", showItems ? "" : "-rotate-90")}
+                  />
+                </button>
+              ) : (
+                <div className="mx-2 mb-2 border-t border-white/10" title={group.label} />
+              )}
+              {showItems ? (
+                <div className="mt-0.5 space-y-0.5">
+                  {group.items.map((item) => {
+                    const Icon = iconMap[item.icon] ?? LayoutDashboard;
+                    const itemBase = item.href.split("?")[0];
+                    const active =
+                      item.href === activeHref ||
+                      (itemBase !== "/dashboard" &&
+                        pathname.startsWith(`${itemBase}/`) &&
+                        !item.href.includes("?"));
+
+                    return (
+                      <Link
+                        key={`${group.label}-${item.href}-${item.label}`}
+                        href={item.href}
+                        title={collapsed && !mobile ? item.label : undefined}
+                        aria-current={active ? "page" : undefined}
+                        className={cn(
+                          "group relative flex items-center rounded-lg text-sm transition-colors",
+                          collapsed && !mobile ? "justify-center px-2 py-2" : "gap-2.5 px-2 py-1.5",
+                          active
+                            ? "bg-white/12 text-white"
+                            : "text-white/65 hover:bg-white/8 hover:text-white",
+                        )}
+                      >
+                        <Icon aria-hidden="true" className="size-4 shrink-0" />
+                        {!collapsed || mobile ? (
+                          <>
+                            <span className="min-w-0 flex-1 truncate">{item.label}</span>
+                            {item.badge && item.badge > 0 ? (
+                              <span className="rounded-full bg-danwell-gold px-1.5 text-[10px] font-semibold text-danwell-navy tabular-nums">
+                                {item.badge > 99 ? "99+" : item.badge}
+                              </span>
+                            ) : null}
+                          </>
+                        ) : item.badge && item.badge > 0 ? (
+                          <span className="absolute top-1 right-1 size-1.5 rounded-full bg-danwell-gold" />
                         ) : null}
-                      </>
-                    ) : item.badge && item.badge > 0 ? (
-                      <span className="absolute mt-5 ml-5 size-1.5 rounded-full bg-danwell-gold" />
-                    ) : null}
-                  </Link>
-                );
-              })}
+                      </Link>
+                    );
+                  })}
+                </div>
+              ) : null}
             </div>
-          </div>
-        ))}
+          );
+        })}
       </nav>
 
       <div className="shrink-0 border-t border-white/10 p-2">
@@ -256,16 +285,29 @@ export function AdminChrome({
   children,
 }: AdminChromeProps) {
   const pathname = usePathname();
+  const searchParams = useSearchParams();
   const [collapsed, setCollapsed] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
   const [search, setSearch] = useState("");
   const [searchOpen, setSearchOpen] = useState(false);
   const [prevPathname, setPrevPathname] = useState(pathname);
+  const [openGroups, setOpenGroups] = useState<Set<string>>(
+    () => new Set(groups.map((group) => group.label)),
+  );
 
   if (prevPathname !== pathname) {
     setPrevPathname(pathname);
     setMobileOpen(false);
     setSearchOpen(false);
+  }
+
+  function toggleGroup(label: string) {
+    setOpenGroups((current) => {
+      const next = new Set(current);
+      if (next.has(label)) next.delete(label);
+      else next.add(label);
+      return next;
+    });
   }
 
   const allLinks = useMemo(
@@ -290,10 +332,18 @@ export function AdminChrome({
       .slice(0, 8);
   }, [allLinks, quickActions, search]);
 
+  const matchesHref = (href: string) => {
+    const [base, query] = href.split("?");
+    if (pathname !== base && !pathname.startsWith(`${base}/`)) return false;
+    if (!query) return pathname === base || pathname.startsWith(`${base}/`);
+    const params = new URLSearchParams(query);
+    for (const [key, value] of params.entries()) {
+      if (searchParams.get(key) !== value) return false;
+    }
+    return pathname === base;
+  };
   const activeHref = allLinks
-    .filter(
-      (item) => pathname === item.href || pathname.startsWith(`${item.href}/`),
-    )
+    .filter((item) => matchesHref(item.href))
     .sort((a, b) => b.href.length - a.href.length)[0]?.href ?? "/dashboard";
   const activeLabel =
     allLinks.find((item) => item.href === activeHref)?.label ?? "Overview";
@@ -304,8 +354,11 @@ export function AdminChrome({
         <Sidebar
           groups={groups}
           activeHref={activeHref}
+          pathname={pathname}
           collapsed={collapsed}
           mobile={false}
+          openGroups={openGroups}
+          onToggleGroup={toggleGroup}
           onCollapse={() => setCollapsed((value) => !value)}
         />
       </div>
@@ -322,8 +375,11 @@ export function AdminChrome({
             <Sidebar
               groups={groups}
               activeHref={activeHref}
+              pathname={pathname}
               collapsed={false}
               mobile
+              openGroups={openGroups}
+              onToggleGroup={toggleGroup}
               onCollapse={() => undefined}
               onClose={() => setMobileOpen(false)}
             />

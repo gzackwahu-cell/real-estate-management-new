@@ -74,20 +74,28 @@ async function AdminShell({ children }: { children: ReactNode }) {
       label: "Overview",
       items: [
         { href: "/dashboard", label: "Dashboard", icon: "dashboard" as const },
-        ...(canReports
-          ? [{ href: "/dashboard/reports", label: "Reports", icon: "reports" as const }]
+      ],
+    },
+    {
+      label: "Properties",
+      items: [
+        ...(canProperties
+          ? [{ href: "/dashboard/properties", label: "All Properties", icon: "properties" as const }]
+          : []),
+        ...(canProperties
+          ? [{ href: "/dashboard/units", label: "Units", icon: "properties" as const }]
+          : []),
+        ...(canListings || canProperties
+          ? [{ href: "/dashboard/categories", label: "Property Categories", icon: "listings" as const }]
+          : []),
+        ...(canUsersRoles || canProperties
+          ? [{ href: "/dashboard/locations", label: "Locations", icon: "land" as const }]
           : []),
       ],
     },
     {
-      label: "Portfolio",
+      label: "Tenancy",
       items: [
-        ...(canProperties
-          ? [{ href: "/dashboard/properties", label: "Properties", icon: "properties" as const }]
-          : []),
-        ...(canOwners
-          ? [{ href: "/dashboard/owners", label: "Owners", icon: "owners" as const }]
-          : []),
         ...(canTenants
           ? [{ href: "/dashboard/tenants", label: "Tenants", icon: "tenants" as const }]
           : []),
@@ -97,19 +105,73 @@ async function AdminShell({ children }: { children: ReactNode }) {
         ...(canLeases
           ? [{ href: "/dashboard/leases", label: "Leases", icon: "leases" as const }]
           : []),
+        ...(canLeases
+          ? [{ href: "/dashboard/renewals", label: "Renewals", icon: "leases" as const }]
+          : []),
       ],
     },
     {
-      label: "Operations",
+      label: "Finance",
       items: [
         ...(canFinance
-          ? [{ href: "/dashboard/finance", label: "Finance", icon: "finance" as const }]
+          ? [{ href: "/dashboard/finance/payments", label: "Payments", icon: "finance" as const }]
+          : []),
+        ...(canFinance
+          ? [{ href: "/dashboard/finance/charges", label: "Rent & Billing", icon: "documents" as const }]
+          : []),
+        ...(canFinance
+          ? [{ href: "/dashboard/arrears", label: "Arrears", icon: "finance" as const }]
+          : []),
+        ...(canFinance || canMaintenance
+          ? [{ href: "/dashboard/maintenance/expenses", label: "Expenses", icon: "finance" as const }]
+          : []),
+        ...(canFinance
+          ? [{ href: "/dashboard/finance/statements", label: "Statements", icon: "documents" as const }]
+          : []),
+        ...(canReports || canFinance
+          ? [{ href: "/dashboard/reports", label: "Reports", icon: "reports" as const }]
+          : []),
+      ],
+    },
+    {
+      label: "Maintenance",
+      items: [
+        ...(canMaintenance
+          ? [{ href: "/dashboard/maintenance/requests", label: "Maintenance Requests", icon: "maintenance" as const }]
           : []),
         ...(canMaintenance
-          ? [{ href: "/dashboard/maintenance", label: "Maintenance", icon: "maintenance" as const }]
+          ? [{ href: "/dashboard/assignments", label: "Assignments", icon: "maintenance" as const }]
+          : []),
+        ...(canMaintenance
+          ? [{ href: "/dashboard/maintenance-history", label: "Maintenance History", icon: "documents" as const }]
+          : []),
+      ],
+    },
+    {
+      label: "Owners",
+      items: [
+        ...(canOwners
+          ? [{ href: "/dashboard/owners", label: "Owners", icon: "owners" as const }]
+          : []),
+        ...(canFinance || canOwners
+          ? [{ href: "/dashboard/owner-statements", label: "Owner Statements", icon: "documents" as const }]
+          : []),
+        ...(canOwners
+          ? [{ href: "/dashboard/owner-portal", label: "Owner Portal Management", icon: "owners" as const }]
+          : []),
+      ],
+    },
+    {
+      label: "Sales & Marketing",
+      items: [
+        ...(canListings
+          ? [{ href: "/dashboard/listings?type=sale", label: "For Sale", icon: "listings" as const }]
           : []),
         ...(canListings
-          ? [{ href: "/dashboard/listings", label: "Listings", icon: "listings" as const }]
+          ? [{ href: "/dashboard/listings?type=rent", label: "For Rent", icon: "listings" as const }]
+          : []),
+        ...(canListings
+          ? [{ href: "/dashboard/listings?type=lease", label: "For Lease", icon: "listings" as const }]
           : []),
         ...(canInquiries
           ? [{ href: "/dashboard/enquiries", label: "Enquiries", icon: "enquiries" as const }]
@@ -120,8 +182,22 @@ async function AdminShell({ children }: { children: ReactNode }) {
       ],
     },
     {
-      label: "Administration",
+      label: "People & Access",
       items: [
+        ...(canUsersRoles
+          ? [{ href: "/dashboard/staff", label: "Staff", icon: "staff" as const }]
+          : []),
+        ...(canUsersRoles
+          ? [{ href: "/dashboard/staff?tab=permissions", label: "Roles & Permissions", icon: "staff" as const }]
+          : []),
+      ],
+    },
+    {
+      label: "Communication",
+      items: [
+        ...(canNotifications
+          ? [{ href: "/dashboard/notices", label: "Notices", icon: "notifications" as const }]
+          : []),
         ...(canNotifications
           ? [
               {
@@ -132,11 +208,19 @@ async function AdminShell({ children }: { children: ReactNode }) {
               },
             ]
           : []),
+      ],
+    },
+    {
+      label: "Administration",
+      items: [
         ...(canUsersRoles
-          ? [{ href: "/dashboard/staff", label: "Staff & access", icon: "staff" as const }]
+          ? [{ href: "/dashboard/settings", label: "Settings", icon: "settings" as const }]
           : []),
         ...(canUsersRoles
-          ? [{ href: "/dashboard/locations", label: "Locations", icon: "land" as const }]
+          ? [{ href: "/dashboard/audit-logs", label: "Audit Logs", icon: "documents" as const }]
+          : []),
+        ...(canUsersRoles
+          ? [{ href: "/dashboard/system", label: "System Configuration", icon: "settings" as const }]
           : []),
       ],
     },
