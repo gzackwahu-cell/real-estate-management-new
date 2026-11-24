@@ -81,15 +81,13 @@ export function formatListingPrice(
   listingType: string,
 ): string {
   const amount = formatMoney(price);
-  if (period === "total") {
-    return amount;
-  }
-  if (period === "yearly") {
-    return `${amount} / year`;
-  }
-  if (listingType === "rent") {
-    return `${amount} / month`;
-  }
+  if (period === "total") return amount;
+  if (period === "daily") return `${amount} / day`;
+  if (period === "weekly") return `${amount} / week`;
+  if (period === "monthly") return `${amount} / month`;
+  if (period === "quarterly") return `${amount} / quarter`;
+  if (period === "yearly") return `${amount} / year`;
+  if (listingType === "rent") return `${amount} / month`;
   return amount;
 }
 

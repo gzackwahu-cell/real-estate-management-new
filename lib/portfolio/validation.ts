@@ -119,29 +119,128 @@ export const propertyInputSchema = z
     });
   });
 
+const unitTypeSchema = z.enum([
+  "bedsitter",
+  "studio",
+  "one_bedroom",
+  "two_bedroom",
+  "three_bedroom",
+  "four_bedroom",
+  "penthouse",
+  "apartment",
+  "maisonette",
+  "house",
+  "shop",
+  "office",
+  "warehouse",
+  "commercial_suite",
+  "showroom",
+  "retail",
+  "mixed_use",
+  "land",
+  "custom",
+  "other",
+]);
+
+const rentPeriodSchema = z.enum(["daily", "weekly", "monthly", "quarterly", "yearly"]);
+
+const nullableIntSchema = (max: number, label: string) =>
+  z.preprocess(
+    (value) => (value === "" || value === null || value === undefined ? null : Number(value)),
+    z
+      .number(`Enter a valid ${label}.`)
+      .int(`Enter a whole number for ${label}.`)
+      .min(0, `${label} cannot be negative.`)
+      .max(max, `${label} is too large.`)
+      .nullable(),
+  );
+
+const nullableMoneySchema = z.preprocess(
+  (value) => (value === "" || value === null || value === undefined || value === "" ? null : Number(value)),
+  z
+    .number("Enter a valid amount.")
+    .refine(Number.isFinite, "Enter a valid amount.")
+    .min(0, "Amount cannot be negative.")
+    .max(999_999_999.99, "Amount is too large.")
+    .nullable(),
+);
+
+const amenitiesSchema = z.preprocess((value) => {
+  if (Array.isArray(value)) return value.filter((v): v is string => typeof v === "string");
+  if (typeof value !== "string") return [];
+  return Array.from(
+    new Set(
+      value
+        .split(/[\n,]+/)
+        .map((item) => item.trim())
+        .filter(Boolean),
+    ),
+  ).slice(0, 40);
+}, z.array(z.string().max(80)));
+
 export const unitInputSchema = z.object({
   unitNumber: z
     .string()
     .trim()
     .min(1, "Enter a unit number or name.")
     .max(80, "Unit number is too long."),
-  unitType: z.enum([
-    "bedsitter",
-    "studio",
-    "one_bedroom",
-    "two_bedroom",
-    "three_bedroom",
-    "apartment",
-    "maisonette",
-    "shop",
-    "office",
-    "custom",
-  ]),
+  unitType: unitTypeSchema,
+  floor: z.string().trim().max(40, "Floor is too long."),
+  bedrooms: nullableIntSchema(50, "Bedrooms"),
+  bathrooms: nullableIntSchema(50, "Bathrooms"),
+  areaSqm: z.preprocess(
+    (value) => (value === "" || value === null || value === undefined ? null : Number(value)),
+    z
+      .number("Enter a valid area.")
+      .refine(Number.isFinite, "Enter a valid area.")
+      .min(0, "Area cannot be negative.")
+      .max(1_000_000, "Area is too large.")
+      .nullable(),
+  ),
   monthlyRent: moneySchema,
+  depositAmount: nullableMoneySchema,
+  rentPeriod: rentPeriodSchema,
   depositRequired: checkboxSchema,
   occupancyStatus: z.enum(["vacant", "occupied", "reserved", "maintenance"]),
   isActive: checkboxSchema,
-  notes: z.string().trim().max(500, "Notes are too long."),
+  isListable: checkboxSchema,
+  sortOrder: z.preprocess(
+    (value) => (value === "" || value === null || value === undefined ? 0 : Number(value)),
+    z.number().int().min(0).max(100000).catch(0),
+  ),
+  amenities: amenitiesSchema,
+  publicNotes: z.string().trim().max(1000, "Public notes are too long."),
+  notes: z.string().trim().max(1000, "Notes are too long."),
+});
+
+export const bulkUnitInputSchema = z.object({
+  prefix: z.string().trim().max(30, "Prefix is too long."),
+  startNumber: z.preprocess(
+    (value) => (value === "" || value === null || value === undefined ? 1 : Number(value)),
+    z.number().int().min(0).max(100000),
+  ),
+  count: z.preprocess(
+    (value) => (value === "" || value === null || value === undefined ? 1 : Number(value)),
+    z.number().int().min(1, "Create at least one unit.").max(200, "Create at most 200 units at once."),
+  ),
+  floor: z.string().trim().max(40, "Floor is too long."),
+  unitType: unitTypeSchema,
+  bedrooms: nullableIntSchema(50, "Bedrooms"),
+  bathrooms: nullableIntSchema(50, "Bathrooms"),
+  areaSqm: z.preprocess(
+    (value) => (value === "" || value === null || value === undefined ? null : Number(value)),
+    z.number().refine(Number.isFinite).min(0).max(1_000_000).nullable(),
+  ),
+  monthlyRent: moneySchema,
+  depositAmount: nullableMoneySchema,
+  rentPeriod: rentPeriodSchema,
+  depositRequired: checkboxSchema,
+  occupancyStatus: z.enum(["vacant", "occupied", "reserved", "maintenance"]),
+  isActive: checkboxSchema,
+  isListable: checkboxSchema,
+  amenities: amenitiesSchema,
+  publicNotes: z.string().trim().max(1000, "Public notes are too long."),
+  notes: z.string().trim().max(1000, "Notes are too long."),
 });
 
 // ---------------------------------------------------------------------------
@@ -226,10 +325,20 @@ export const unitRowSchema = z.object({
   property_id: z.uuid(),
   unit_number: z.string(),
   unit_type: z.string(),
+  floor: z.string().nullable().optional().transform((v) => v ?? null),
+  bedrooms: dbNullableNumberSchema.optional().transform((v) => v ?? null),
+  bathrooms: dbNullableNumberSchema.optional().transform((v) => v ?? null),
+  area_sqm: dbNullableNumberSchema.optional().transform((v) => v ?? null),
   monthly_rent: dbNumberSchema,
+  deposit_amount: dbNullableNumberSchema.optional().transform((v) => v ?? null),
+  rent_period: z.string().optional().transform((v) => v ?? "monthly"),
   deposit_required: z.boolean(),
   occupancy_status: z.string(),
   is_active: z.boolean(),
+  is_listable: z.boolean().optional().transform((v) => v ?? true),
+  sort_order: z.number().int().optional().transform((v) => v ?? 0),
+  amenities: z.array(z.string()).optional().transform((v) => v ?? []),
+  public_notes: z.string().nullable().optional().transform((v) => v ?? null),
   notes: z.string().nullable(),
 });
 

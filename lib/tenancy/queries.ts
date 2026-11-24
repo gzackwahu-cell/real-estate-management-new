@@ -73,6 +73,8 @@ const unitOptionRowSchema = z.object({
   id: z.uuid(),
   unit_number: z.string(),
   property_id: z.uuid(),
+  unit_type: z.string().optional().default("custom"),
+  floor: z.string().nullable().optional().transform((v) => v ?? null),
   monthly_rent: z.preprocess(
     (value) => (typeof value === "string" && value.trim() !== "" ? Number(value) : value),
     z.number().refine(Number.isFinite, "Invalid stored number."),
@@ -228,7 +230,7 @@ export async function getUnitOptions(
 ): Promise<UnitOption[]> {
   const { data, error } = await supabase
     .from("units")
-    .select("id, unit_number, property_id, monthly_rent, occupancy_status, is_active, deposit_required, properties(id, title)")
+    .select("id, unit_number, property_id, unit_type, floor, monthly_rent, occupancy_status, is_active, deposit_required, properties(id, title)")
     .order("unit_number", { ascending: true });
 
   if (error) {
@@ -257,6 +259,8 @@ export async function getUnitOptions(
         monthly_rent: unit.monthly_rent,
         deposit_required: unit.deposit_required,
         occupancy_status: unit.occupancy_status,
+        floor: unit.floor ?? null,
+        unit_type: unit.unit_type,
       };
     });
 }

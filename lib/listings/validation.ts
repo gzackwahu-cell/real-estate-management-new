@@ -68,10 +68,28 @@ export const listingImageRowSchema = z.object({
   sort_order: z.number(),
 });
 
+export const publicUnitRowSchema = z.object({
+  id: z.uuid(),
+  property_id: z.uuid(),
+  unit_number: z.string(),
+  unit_type: z.string(),
+  floor: z.string().nullable().optional().transform((v) => v ?? null),
+  bedrooms: nullableDbNumber.optional().transform((v) => v ?? null),
+  bathrooms: nullableDbNumber.optional().transform((v) => v ?? null),
+  area_sqm: nullableDbNumber.optional().transform((v) => v ?? null),
+  monthly_rent: dbNumber,
+  deposit_amount: nullableDbNumber.optional().transform((v) => v ?? null),
+  rent_period: z.string().optional().transform((v) => v ?? "monthly"),
+  occupancy_status: z.string(),
+  amenities: z.array(z.string()).optional().transform((v) => v ?? []),
+  public_notes: z.string().nullable().optional().transform((v) => v ?? null),
+});
+
 export type PublicListing = z.infer<typeof publicListingRowSchema>;
 export type ListingImage = z.infer<typeof listingImageRowSchema> & {
   url: string;
 };
+export type PublicUnit = z.infer<typeof publicUnitRowSchema>;
 
 const singleValue = (value: unknown): unknown =>
   Array.isArray(value) ? value[0] : value;

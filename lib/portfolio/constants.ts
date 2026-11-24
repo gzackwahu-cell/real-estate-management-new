@@ -18,11 +18,29 @@ export const UNIT_TYPES = [
   { value: "one_bedroom", label: "One bedroom" },
   { value: "two_bedroom", label: "Two bedroom" },
   { value: "three_bedroom", label: "Three bedroom" },
+  { value: "four_bedroom", label: "Four bedroom" },
+  { value: "penthouse", label: "Penthouse" },
   { value: "apartment", label: "Apartment" },
   { value: "maisonette", label: "Maisonette" },
+  { value: "house", label: "House" },
   { value: "shop", label: "Shop" },
   { value: "office", label: "Office" },
+  { value: "warehouse", label: "Warehouse" },
+  { value: "commercial_suite", label: "Commercial suite" },
+  { value: "showroom", label: "Showroom" },
+  { value: "retail", label: "Retail" },
+  { value: "mixed_use", label: "Mixed use" },
+  { value: "land", label: "Land" },
   { value: "custom", label: "Custom" },
+  { value: "other", label: "Other" },
+] as const;
+
+export const RENT_PERIODS = [
+  { value: "daily", label: "Daily" },
+  { value: "weekly", label: "Weekly" },
+  { value: "monthly", label: "Monthly" },
+  { value: "quarterly", label: "Quarterly" },
+  { value: "yearly", label: "Yearly" },
 ] as const;
 
 export const OCCUPANCY_STATUSES = [

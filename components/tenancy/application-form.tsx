@@ -68,7 +68,7 @@ export function ApplicationForm({ units, defaultDate }: ApplicationFormProps) {
           >
             {units.map((unit) => (
               <option key={unit.id} value={unit.id}>
-                {unit.unit_number} · {unit.property_title}
+                {unit.unit_number} · {unit.property_title}{unit.floor ? ` · ${unit.floor}` : ""}
               </option>
             ))}
           </Select>

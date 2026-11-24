@@ -7,9 +7,11 @@ import { createPublicListingClient } from "./supabase";
 import {
   listingImageRowSchema,
   publicListingRowSchema,
+  publicUnitRowSchema,
   type ListingFilters,
   type ListingImage,
   type PublicListing,
+  type PublicUnit,
 } from "./validation";
 
 /** Only approved marketing fields are selected for anonymous visitors. */
@@ -236,6 +238,28 @@ export async function getPublishedListingOptions(): Promise<
       return [];
     }
     return z.array(listingOptionSchema).parse(data);
+  } catch {
+    return [];
+  }
+}
+
+export async function getPublicUnitsForProperty(propertyId: string | null | undefined): Promise<PublicUnit[]> {
+  if (!propertyId || !z.uuid().safeParse(propertyId).success) return [];
+  try {
+    const client = createPublicListingClient();
+    const { data, error } = await client
+      .from("units")
+      .select("id, property_id, unit_number, unit_type, floor, bedrooms, bathrooms, area_sqm, monthly_rent, deposit_amount, rent_period, occupancy_status, amenities, public_notes")
+      .eq("property_id", propertyId)
+      .eq("is_active", true)
+      .eq("is_listable", true)
+      .in("occupancy_status", ["vacant", "reserved"])
+      .order("sort_order", { ascending: true })
+      .order("floor", { ascending: true })
+      .order("unit_number", { ascending: true })
+      .limit(200);
+    if (error || !data) return [];
+    return z.array(publicUnitRowSchema).parse(data);
   } catch {
     return [];
   }

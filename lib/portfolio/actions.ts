@@ -7,6 +7,7 @@ import type { AuthorizedContext } from "@/lib/auth/dal";
 import { withPermission } from "@/lib/auth/guards";
 import type { PortfolioClient } from "./queries";
 import {
+  bulkUnitInputSchema,
   formStateFromZod,
   formText,
   ownerInputSchema,
@@ -106,10 +107,43 @@ function unitFormValues(formData: FormData) {
   return {
     unitNumber: formText(formData, "unitNumber"),
     unitType: formText(formData, "unitType"),
+    floor: formText(formData, "floor"),
+    bedrooms: formText(formData, "bedrooms"),
+    bathrooms: formText(formData, "bathrooms"),
+    areaSqm: formText(formData, "areaSqm"),
     monthlyRent: formText(formData, "monthlyRent"),
+    depositAmount: formText(formData, "depositAmount"),
+    rentPeriod: formText(formData, "rentPeriod") || "monthly",
     depositRequired: formData.get("depositRequired") === "on",
     occupancyStatus: formText(formData, "occupancyStatus"),
     isActive: formData.get("isActive") === "on",
+    isListable: formData.get("isListable") === "on",
+    sortOrder: formText(formData, "sortOrder"),
+    amenities: formText(formData, "amenities"),
+    publicNotes: formText(formData, "publicNotes"),
+    notes: formText(formData, "notes"),
+  };
+}
+
+function bulkUnitFormValues(formData: FormData) {
+  return {
+    prefix: formText(formData, "prefix"),
+    startNumber: formText(formData, "startNumber"),
+    count: formText(formData, "count"),
+    floor: formText(formData, "floor"),
+    unitType: formText(formData, "unitType"),
+    bedrooms: formText(formData, "bedrooms"),
+    bathrooms: formText(formData, "bathrooms"),
+    areaSqm: formText(formData, "areaSqm"),
+    monthlyRent: formText(formData, "monthlyRent"),
+    depositAmount: formText(formData, "depositAmount"),
+    rentPeriod: formText(formData, "rentPeriod") || "monthly",
+    depositRequired: formData.get("depositRequired") === "on",
+    occupancyStatus: formText(formData, "occupancyStatus") || "vacant",
+    isActive: formData.get("isActive") === "on",
+    isListable: formData.get("isListable") === "on",
+    amenities: formText(formData, "amenities"),
+    publicNotes: formText(formData, "publicNotes"),
     notes: formText(formData, "notes"),
   };
 }
@@ -327,6 +361,36 @@ export async function updatePropertyAction(
   redirect(`/dashboard/properties/${propertyId}`);
 }
 
+function unitDbPayload(
+  propertyId: string,
+  data: z.infer<typeof unitInputSchema>,
+  userId: string,
+  mode: "create" | "update",
+) {
+  const base = {
+    property_id: propertyId,
+    unit_number: data.unitNumber,
+    unit_type: data.unitType,
+    floor: data.floor || null,
+    bedrooms: data.bedrooms,
+    bathrooms: data.bathrooms,
+    area_sqm: data.areaSqm,
+    monthly_rent: data.monthlyRent,
+    deposit_amount: data.depositAmount,
+    rent_period: data.rentPeriod,
+    deposit_required: data.depositRequired,
+    occupancy_status: data.occupancyStatus,
+    is_active: data.isActive,
+    is_listable: data.isListable,
+    sort_order: data.sortOrder,
+    amenities: data.amenities,
+    public_notes: data.publicNotes || null,
+    notes: data.notes || null,
+    updated_by: userId,
+  };
+  return mode === "create" ? { ...base, created_by: userId } : base;
+}
+
 export async function createUnitAction(
   propertyId: string,
   _previousState: PortfolioFormState,
@@ -342,18 +406,9 @@ export async function createUnitAction(
   }
 
   const result = await runMutation("units", "create", async (context, supabase) => {
-    const { error } = await supabase.from("units").insert({
-      property_id: propertyId,
-      unit_number: parsed.data.unitNumber,
-      unit_type: parsed.data.unitType,
-      monthly_rent: parsed.data.monthlyRent,
-      deposit_required: parsed.data.depositRequired,
-      occupancy_status: parsed.data.occupancyStatus,
-      is_active: parsed.data.isActive,
-      notes: parsed.data.notes || null,
-      created_by: context.userId,
-      updated_by: context.userId,
-    });
+    const { error } = await supabase
+      .from("units")
+      .insert(unitDbPayload(propertyId, parsed.data, context.userId, "create"));
 
     if (error) {
       throw new Error(error.message);
@@ -367,7 +422,8 @@ export async function createUnitAction(
   }
 
   revalidatePath(`/dashboard/properties/${propertyId}`);
-  redirect(`/dashboard/properties/${propertyId}`);
+  revalidatePath("/dashboard/units");
+  redirect(`/dashboard/properties/${propertyId}?tab=units`);
 }
 
 export async function updateUnitAction(
@@ -388,16 +444,7 @@ export async function updateUnitAction(
   const result = await runMutation("units", "edit", async (context, supabase) => {
     const { error } = await supabase
       .from("units")
-      .update({
-        unit_number: parsed.data.unitNumber,
-        unit_type: parsed.data.unitType,
-        monthly_rent: parsed.data.monthlyRent,
-        deposit_required: parsed.data.depositRequired,
-        occupancy_status: parsed.data.occupancyStatus,
-        is_active: parsed.data.isActive,
-        notes: parsed.data.notes || null,
-        updated_by: context.userId,
-      })
+      .update(unitDbPayload(propertyId, parsed.data, context.userId, "update"))
       .eq("id", unitId)
       .eq("property_id", propertyId);
 
@@ -413,5 +460,65 @@ export async function updateUnitAction(
   }
 
   revalidatePath(`/dashboard/properties/${propertyId}`);
-  redirect(`/dashboard/properties/${propertyId}`);
+  revalidatePath("/dashboard/units");
+  redirect(`/dashboard/properties/${propertyId}?tab=units`);
+}
+
+export async function bulkCreateUnitsAction(
+  propertyId: string,
+  _previousState: PortfolioFormState,
+  formData: FormData,
+): Promise<PortfolioFormState> {
+  if (!validId(propertyId)) {
+    return { error: "Invalid property record." };
+  }
+
+  const parsed = bulkUnitInputSchema.safeParse(bulkUnitFormValues(formData));
+  if (!parsed.success) {
+    return formStateFromZod(parsed.error);
+  }
+
+  const result = await runMutation("units", "create", async (context, supabase) => {
+    const data = parsed.data;
+    const rows = Array.from({ length: data.count }, (_, i) => {
+      const n = data.startNumber + i;
+      const unitNumber = data.prefix ? `${data.prefix}${n}` : String(n);
+      return {
+        property_id: propertyId,
+        unit_number: unitNumber,
+        unit_type: data.unitType,
+        floor: data.floor || null,
+        bedrooms: data.bedrooms,
+        bathrooms: data.bathrooms,
+        area_sqm: data.areaSqm,
+        monthly_rent: data.monthlyRent,
+        deposit_amount: data.depositAmount,
+        rent_period: data.rentPeriod,
+        deposit_required: data.depositRequired,
+        occupancy_status: data.occupancyStatus,
+        is_active: data.isActive,
+        is_listable: data.isListable,
+        sort_order: n,
+        amenities: data.amenities,
+        public_notes: data.publicNotes || null,
+        notes: data.notes || null,
+        created_by: context.userId,
+        updated_by: context.userId,
+      };
+    });
+
+    const { error } = await supabase.from("units").insert(rows);
+    if (error) {
+      throw new Error(error.message);
+    }
+    return rows.length;
+  });
+
+  if (!result.ok) {
+    return { error: result.error };
+  }
+
+  revalidatePath(`/dashboard/properties/${propertyId}`);
+  revalidatePath("/dashboard/units");
+  return { success: `${result.value} unit${result.value === 1 ? "" : "s"} created.` };
 }

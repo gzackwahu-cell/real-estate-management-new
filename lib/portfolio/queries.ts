@@ -85,7 +85,7 @@ const OWNER_COLUMNS =
   "id, full_name, phone, email, id_reference, address, is_active, created_at";
 
 const UNIT_COLUMNS =
-  "id, property_id, unit_number, unit_type, monthly_rent, deposit_required, occupancy_status, is_active, notes";
+  "id, property_id, unit_number, unit_type, floor, bedrooms, bathrooms, area_sqm, monthly_rent, deposit_amount, rent_period, deposit_required, occupancy_status, is_active, is_listable, sort_order, amenities, public_notes, notes";
 
 export const ATTACHMENT_COLUMNS =
   "id, entity_type, entity_id, bucket, visibility, path, caption, is_primary, sort_order";
@@ -263,6 +263,8 @@ export async function getPropertyDetail(
       .from("units")
       .select(UNIT_COLUMNS)
       .eq("property_id", propertyId)
+      .order("sort_order", { ascending: true })
+      .order("floor", { ascending: true })
       .order("unit_number", { ascending: true }),
     supabase
       .from("attachments")
@@ -316,4 +318,37 @@ export async function getUnit(
   }
 
   return data ? unitRowSchema.parse(data) : null;
+}
+
+export type UnitWithProperty = UnitRecord & { property_title: string; property_county: string; property_town: string };
+
+export async function getAllUnits(supabase: PortfolioClient): Promise<UnitWithProperty[]> {
+  const { data, error } = await supabase
+    .from("units")
+    .select(`${UNIT_COLUMNS}, properties(title, county, town)`)
+    .order("unit_number", { ascending: true })
+    .limit(500);
+
+  if (error) {
+    fail("Unable to load units.");
+  }
+
+  const rowSchema = unitRowSchema.extend({
+    properties: z.union([
+      z.object({ title: z.string(), county: z.string(), town: z.string() }),
+      z.array(z.object({ title: z.string(), county: z.string(), town: z.string() })),
+    ]).nullish(),
+  });
+
+  return z.array(rowSchema).parse(data ?? []).map((row) => {
+    const p = firstEmbedded(row.properties);
+    const { properties: _properties, ...unit } = row;
+    void _properties;
+    return {
+      ...unit,
+      property_title: p?.title ?? "Property",
+      property_county: p?.county ?? "",
+      property_town: p?.town ?? "",
+    };
+  });
 }

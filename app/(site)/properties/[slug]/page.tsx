@@ -15,8 +15,10 @@ import {
 } from "@/lib/listings/constants";
 import {
   getListingImages,
+  getPublicUnitsForProperty,
   getPublishedListingBySlug,
 } from "@/lib/listings/queries";
+import { OCCUPANCY_STATUSES, UNIT_TYPES, labelFor as portfolioLabel } from "@/lib/portfolio/constants";
 
 type PropertyDetailProps = {
   params: Promise<{ slug: string }>;
@@ -105,7 +107,10 @@ async function PropertyDetailContent({ params }: PropertyDetailProps) {
     notFound();
   }
 
-  const images = await getListingImages(listing.id, listing.property_id);
+  const [images, availableUnits] = await Promise.all([
+    getListingImages(listing.id, listing.property_id),
+    getPublicUnitsForProperty(listing.property_id),
+  ]);
   const price = formatListingPrice(
     listing.price,
     listing.price_period,
@@ -149,6 +154,69 @@ async function PropertyDetailContent({ params }: PropertyDetailProps) {
                   </li>
                 ))}
               </ul>
+            </section>
+          ) : null}
+
+          {availableUnits.length > 0 ? (
+            <section className="mt-10">
+              <div className="flex flex-wrap items-end justify-between gap-3">
+                <div>
+                  <h2 className="text-2xl font-semibold tracking-tight">Available units</h2>
+                  <p className="mt-1 text-sm text-muted-foreground">
+                    Compare available units by floor, type, and pricing. Availability can change; confirm with Danwell before making payment.
+                  </p>
+                </div>
+                <span className="rounded-full bg-danwell-teal/10 px-3 py-1 text-xs font-medium text-danwell-teal">
+                  {availableUnits.length} unit{availableUnits.length === 1 ? "" : "s"} listed
+                </span>
+              </div>
+              <div className="mt-4 space-y-4">
+                {Array.from(
+                  availableUnits.reduce((map, unit) => {
+                    const floor = (unit.floor ?? "").trim() || "Unspecified floor";
+                    map.set(floor, [...(map.get(floor) ?? []), unit]);
+                    return map;
+                  }, new Map<string, typeof availableUnits>()),
+                ).map(([floor, floorUnits]) => (
+                  <div key={floor} className="rounded-xl border border-danwell-navy/10 bg-white p-4">
+                    <div className="mb-3 flex items-center justify-between gap-2">
+                      <h3 className="text-sm font-semibold text-danwell-navy">{floor}</h3>
+                      <span className="text-xs text-muted-foreground">{floorUnits.length} available</span>
+                    </div>
+                    <div className="grid gap-3 sm:grid-cols-2">
+                      {floorUnits.map((unit) => {
+                        const unitPrice = formatListingPrice(unit.monthly_rent, unit.rent_period, listing.listing_type);
+                        return (
+                          <div key={unit.id} className="rounded-lg border border-danwell-navy/10 bg-muted/20 p-4">
+                            <div className="flex items-start justify-between gap-3">
+                              <div>
+                                <p className="font-medium text-danwell-navy">{unit.unit_number}</p>
+                                <p className="text-xs text-muted-foreground">{portfolioLabel(UNIT_TYPES, unit.unit_type)}</p>
+                              </div>
+                              <span className={`rounded-full px-2 py-0.5 text-[11px] font-medium ${unit.occupancy_status === "vacant" ? "bg-emerald-50 text-emerald-700" : "bg-amber-50 text-amber-700"}`}>
+                                {portfolioLabel(OCCUPANCY_STATUSES, unit.occupancy_status)}
+                              </span>
+                            </div>
+                            <p className="mt-2 text-sm font-semibold text-danwell-navy">{unitPrice}</p>
+                            <dl className="mt-2 grid grid-cols-2 gap-x-3 gap-y-1 text-xs text-muted-foreground">
+                              <div><dt className="inline">Beds: </dt><dd className="inline">{unit.bedrooms ?? "—"}</dd></div>
+                              <div><dt className="inline">Baths: </dt><dd className="inline">{unit.bathrooms ?? "—"}</dd></div>
+                              <div><dt className="inline">Area: </dt><dd className="inline">{unit.area_sqm ? `${unit.area_sqm} sqm` : "—"}</dd></div>
+                              <div><dt className="inline">Deposit: </dt><dd className="inline">{unit.deposit_amount !== null ? `KES ${new Intl.NumberFormat("en-KE").format(unit.deposit_amount)}` : "Ask"}</dd></div>
+                            </dl>
+                            {unit.amenities.length > 0 ? (
+                              <p className="mt-2 text-xs text-muted-foreground">{unit.amenities.slice(0, 5).join(" · ")}</p>
+                            ) : null}
+                            {unit.public_notes ? (
+                              <p className="mt-2 text-xs text-muted-foreground">{unit.public_notes}</p>
+                            ) : null}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                ))}
+              </div>
             </section>
           ) : null}
         </div>

@@ -343,6 +343,8 @@ export type UnitOption = {
   monthly_rent: number;
   deposit_required: boolean;
   occupancy_status: string;
+  floor?: string | null;
+  unit_type?: string;
 };
 
 export function formStateFromZod(error: z.ZodError): TenancyFormState {
